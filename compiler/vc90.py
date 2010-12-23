@@ -1,41 +1,43 @@
 import os
-import subprocess
-from pake import log
+from distutils import ccompiler as cc
 
-def convert_mbcs(s):
-	dec = getattr(s, "decode", None)
-	if dec is not None:
-		try:
-			s = dec("mbcs")
-		except UnicodeError:
-			pass
-	return s
+def compile_c(srcs):
+	from distutils import ccompiler as c
+	compiler = c.new_compiler()
+	objs = compiler.compile(srcs)
+	compiler.link_executable(objs, 'main')
+#TODO: generate setup file
+#TODO: cmd like "pake cc hello.c"
+#TODO: package, dist, xxx
 
-def remove_duplicates(var):
-	oldList = var.split(os.pathsep)
-	newList = []
-	for i in oldList:
-		if i not in newList:
-			newList.append(i)
-	return os.pathsep.join(newList)
+def get_obj_name(compiler, cfile):
+	return os.path.basename(cfile) + compile.obj_extension
 
-def find_vcvarsall(version=9.0, arch="x86"):
-	vcvarsall = None
-	toolskey = "VS%0.f0COMNTOOLS" % version
-	toolsdir = os.environ.get(toolskey, None)
-	log.debug(toolsdir)
-	if toolsdir and os.path.isdir(toolsdir):
-		vcvarsall = os.path.join(toolsdir, "vcvarsall.bat")
-	else:
-		log.debug("Env var %s is not set or invalid" % toolskey)
-		return None
+def compile_c(cfile, depends, force):
+	compiler = cc.new_compiler()
+	ofile = get_obj_name(compiler, cfile)
 
-	if vcvarsall and os.path.isfile(vcvarsall):
-		return vcvarsall
-	log.debug("Unable to find vcvarsall.bat")
 
+class Task(object):
+	def __init__(self, target, depends):
+		self.target = target
+		self.depends = depends
+
+	def __call__(self, func):
+		def _task():
+			func(self.target, self.depends)
+		return _task
+
+def task(target, depends):
+	return Task(target, depends)
+
+@task("main", ["main.c", "hello.c"])
+def compile(target, depends):
+	print(target, depends)
 
 if '__main__' == __name__:
-	log.set_threshold(log.DEBUG)
-	print(find_vcvarsall())
+	compile()
+#	from distutils import log
+#	log.set_verbosity(1)
+#	compile_c(["main.c", "hello.c"])
 
